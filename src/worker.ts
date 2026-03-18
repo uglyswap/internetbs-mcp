@@ -1,15 +1,17 @@
 /**
  * Cloudflare Worker entry point for Internet.bs MCP Server
  * Implements MCP Streamable HTTP transport (stateless mode)
+ *
+ * Each user passes their own Internet.bs credentials via HTTP headers:
+ *   X-InternetBS-Key: their-api-key
+ *   X-InternetBS-Password: their-password
+ *   X-InternetBS-URL: https://api.internet.bs  (optional, defaults to production)
  */
 
 import { setConfig } from "./client.js";
 import { allTools } from "./tools/index.js";
 
 interface Env {
-  INTERNETBS_API_KEY: string;
-  INTERNETBS_PASSWORD: string;
-  INTERNETBS_API_URL?: string;
   MCP_AUTH_TOKEN?: string;
 }
 
@@ -33,7 +35,7 @@ const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, Mcp-Session-Id, Accept",
+    "Content-Type, Authorization, Mcp-Session-Id, Accept, X-InternetBS-Key, X-InternetBS-Password, X-InternetBS-URL",
   "Access-Control-Expose-Headers": "Mcp-Session-Id",
 };
 
@@ -58,6 +60,24 @@ function errorResponse(
     error: { code, message },
   };
   return jsonResponse(body, code === -32600 ? 400 : 200);
+}
+
+// Methods that don't require Internet.bs credentials
+const PUBLIC_METHODS = new Set([
+  "initialize",
+  "notifications/initialized",
+  "notifications/cancelled",
+  "tools/list",
+  "ping",
+]);
+
+function needsCredentials(body: unknown): boolean {
+  if (Array.isArray(body)) {
+    return (body as JsonRpcRequest[]).some(
+      (req) => !PUBLIC_METHODS.has(req.method)
+    );
+  }
+  return !PUBLIC_METHODS.has((body as JsonRpcRequest).method);
 }
 
 function handleInitialize(req: JsonRpcRequest): JsonRpcResponse {
@@ -87,7 +107,9 @@ function handleToolsList(req: JsonRpcRequest): JsonRpcResponse {
   };
 }
 
-async function handleToolsCall(req: JsonRpcRequest): Promise<JsonRpcResponse> {
+async function handleToolsCall(
+  req: JsonRpcRequest
+): Promise<JsonRpcResponse> {
   const params = req.params as
     | { name: string; arguments?: Record<string, unknown> }
     | undefined;
@@ -138,12 +160,6 @@ async function handleJsonRpcRequest(
 ): Promise<JsonRpcResponse | null> {
   // Notifications (no id) don't get a response
   if (req.id === undefined || req.id === null) {
-    if (req.method === "notifications/initialized") {
-      return null;
-    }
-    if (req.method === "notifications/cancelled") {
-      return null;
-    }
     return null;
   }
 
@@ -187,7 +203,7 @@ export default {
       );
     }
 
-    // Auth check
+    // Optional server-level auth (if the operator sets MCP_AUTH_TOKEN)
     if (env.MCP_AUTH_TOKEN) {
       const auth = request.headers.get("Authorization");
       if (auth !== `Bearer ${env.MCP_AUTH_TOKEN}`) {
@@ -195,7 +211,7 @@ export default {
       }
     }
 
-    // GET /mcp - SSE stream (not needed for stateless, return 405)
+    // GET /mcp - SSE stream (not needed for stateless)
     if (request.method === "GET") {
       return jsonResponse(
         {
@@ -211,23 +227,44 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    // POST /mcp - Handle JSON-RPC
+    // POST /mcp only
     if (request.method !== "POST") {
       return jsonResponse({ error: "Method not allowed" }, 405);
     }
 
-    // Configure the API client with Worker env
-    setConfig({
-      apiKey: env.INTERNETBS_API_KEY,
-      password: env.INTERNETBS_PASSWORD,
-      apiUrl: env.INTERNETBS_API_URL || "https://testapi.internet.bs",
-    });
-
+    // Parse JSON-RPC body
     let body: unknown;
     try {
       body = await request.json();
     } catch {
       return errorResponse(null, -32700, "Parse error: invalid JSON");
+    }
+
+    // Read user credentials from headers (required for tool calls)
+    if (needsCredentials(body)) {
+      const apiKey = request.headers.get("X-InternetBS-Key");
+      const password = request.headers.get("X-InternetBS-Password");
+
+      if (!apiKey || !password) {
+        return jsonResponse(
+          {
+            error:
+              "Missing credentials. Set headers: X-InternetBS-Key and X-InternetBS-Password",
+            hint: {
+              "X-InternetBS-Key": "Your Internet.bs API key",
+              "X-InternetBS-Password": "Your Internet.bs API password",
+              "X-InternetBS-URL":
+                "(optional) https://api.internet.bs or https://testapi.internet.bs",
+            },
+          },
+          401
+        );
+      }
+
+      const apiUrl =
+        request.headers.get("X-InternetBS-URL") || "https://api.internet.bs";
+
+      setConfig({ apiKey, password, apiUrl });
     }
 
     // Batch request
@@ -246,12 +283,15 @@ export default {
     // Single request
     const rpcReq = body as JsonRpcRequest;
     if (!rpcReq.jsonrpc || rpcReq.jsonrpc !== "2.0") {
-      return errorResponse(null, -32600, "Invalid JSON-RPC: missing jsonrpc 2.0");
+      return errorResponse(
+        null,
+        -32600,
+        "Invalid JSON-RPC: missing jsonrpc 2.0"
+      );
     }
 
     const result = await handleJsonRpcRequest(rpcReq);
     if (!result) {
-      // Notification - no response body
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 

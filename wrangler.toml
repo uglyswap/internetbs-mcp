@@ -3,11 +3,8 @@ main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Set your secrets with:
-#   wrangler secret put INTERNETBS_API_KEY
-#   wrangler secret put INTERNETBS_PASSWORD
-#   wrangler secret put MCP_AUTH_TOKEN
+# No Internet.bs credentials needed here!
+# Each user passes their own credentials via HTTP headers.
 #
-# Optional env vars (set in [vars] or as secrets):
-[vars]
-INTERNETBS_API_URL = "https://api.internet.bs"
+# Optional: lock down the endpoint with a server-level token
+#   wrangler secret put MCP_AUTH_TOKEN

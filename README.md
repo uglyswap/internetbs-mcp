@@ -15,15 +15,52 @@ A complete [Model Context Protocol](https://modelcontextprotocol.io) server for 
 - **Account** — balance, price list, configuration, total cost
 - **Verification** — registrant email verification info & resend
 
-## Setup (2 minutes)
+---
 
-### 1. Get your Internet.bs API credentials
+## Option 1 — Remote (recommended)
 
-Log into [internet.bs](https://internet.bs) and request API access. You'll receive an **API key** and a **password**.
+Nothing to install. Just add this to your Claude Code MCP config:
 
-### 2. Add to Claude Code
+```json
+{
+  "mcpServers": {
+    "internetbs": {
+      "url": "https://internetbs-mcp.uglyswap.workers.dev/mcp",
+      "headers": {
+        "X-InternetBS-Key": "your-api-key",
+        "X-InternetBS-Password": "your-password"
+      }
+    }
+  }
+}
+```
 
-Add this to your MCP settings file (`~/.claude/settings.json` on Mac/Linux, `%USERPROFILE%\.claude\settings.json` on Windows):
+Replace `your-api-key` and `your-password` with your [Internet.bs](https://internet.bs) API credentials. Done.
+
+> Your credentials are sent directly to Internet.bs over HTTPS. They are never stored on the server.
+
+**Test mode** (no account needed):
+
+```json
+{
+  "mcpServers": {
+    "internetbs": {
+      "url": "https://internetbs-mcp.uglyswap.workers.dev/mcp",
+      "headers": {
+        "X-InternetBS-Key": "testapi",
+        "X-InternetBS-Password": "testpass",
+        "X-InternetBS-URL": "https://testapi.internet.bs"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Option 2 — Local (via npx)
+
+Runs entirely on your machine. No external server involved.
 
 ```json
 {
@@ -41,21 +78,7 @@ Add this to your MCP settings file (`~/.claude/settings.json` on Mac/Linux, `%US
 }
 ```
 
-Replace `your-api-key` and `your-password` with your credentials. That's it.
-
-### 3. Try it
-
-In Claude Code, ask:
-
-> "Check if example.com is available"
-
-> "List all my domains"
-
-> "Add a DNS A record for www.mysite.com pointing to 1.2.3.4"
-
-## Test Mode (no account needed)
-
-Internet.bs provides a free sandbox. Use these credentials to try before you buy:
+**Test mode:**
 
 ```json
 {
@@ -72,6 +95,19 @@ Internet.bs provides a free sandbox. Use these credentials to try before you buy
   }
 }
 ```
+
+---
+
+## Try it
+
+Once configured, ask Claude:
+
+- *"Check if example.com is available"*
+- *"List all my domains"*
+- *"Add a DNS A record for www.mysite.com pointing to 1.2.3.4"*
+- *"What's my account balance?"*
+- *"Renew mysite.com for 2 years"*
+- *"Set up email forwarding from info@mysite.com to me@gmail.com"*
 
 ## All 47 Tools
 
@@ -172,40 +208,26 @@ Internet.bs provides a free sandbox. Use these credentials to try before you buy
 | `registrant_verification_info` | Get registrant email verification status |
 | `registrant_verification_resend` | Resend registrant verification email |
 
-## Alternative: Docker
+## Self-hosting the remote server
+
+Want to run your own instance instead of using ours? Deploy to Cloudflare Workers (free, 100K requests/day):
 
 ```bash
 git clone https://github.com/uglyswap/internetbs-mcp.git
 cd internetbs-mcp
-docker build -t internetbs-mcp .
+npm install
+npx wrangler login
+npm run deploy
 ```
 
-```json
-{
-  "mcpServers": {
-    "internetbs": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm",
-        "-e", "INTERNETBS_API_KEY=your-key",
-        "-e", "INTERNETBS_PASSWORD=your-pass",
-        "-e", "INTERNETBS_API_URL=https://api.internet.bs",
-        "internetbs-mcp"
-      ]
-    }
-  }
-}
-```
+Your instance will be at `https://internetbs-mcp.<your-subdomain>.workers.dev/mcp`.
 
-## Alternative: Self-hosted (Cloudflare Workers)
+Users connect the same way as Option 1, just with your URL.
 
-If you want to run a shared instance, a Cloudflare Workers deployment is included. See `wrangler.toml` and `src/worker.ts`. Free tier: 100K requests/day.
+Optionally lock it down with a server-level token:
 
 ```bash
-npx wrangler login
-npx wrangler secret put INTERNETBS_API_KEY
-npx wrangler secret put INTERNETBS_PASSWORD
 npx wrangler secret put MCP_AUTH_TOKEN
-npm run deploy
 ```
 
 ## Development
@@ -214,9 +236,10 @@ npm run deploy
 git clone https://github.com/uglyswap/internetbs-mcp.git
 cd internetbs-mcp
 npm install
-npm run dev      # Run with tsx (hot reload)
-npm run build    # Compile TypeScript
-npm start        # Run compiled version
+npm run dev          # Local stdio (hot reload)
+npm run dev:worker   # Local Cloudflare Worker (http://localhost:8787)
+npm run build        # Compile TypeScript
+npm start            # Run compiled stdio version
 ```
 
 ## License
