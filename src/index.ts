@@ -7,6 +7,9 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { allTools } from "./tools/index.js";
+import { setConfigFromEnv } from "./client.js";
+
+setConfigFromEnv();
 
 const server = new Server(
   {

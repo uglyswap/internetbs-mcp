@@ -74,6 +74,50 @@ docker run -i --rm \
   internetbs-mcp
 ```
 
+### Deploy on Cloudflare Workers (recommended, free)
+
+100K requests/day free. Zero infrastructure to manage.
+
+**1. Install dependencies and login:**
+
+```bash
+npm install
+npx wrangler login
+```
+
+**2. Set your secrets:**
+
+```bash
+npx wrangler secret put INTERNETBS_API_KEY
+npx wrangler secret put INTERNETBS_PASSWORD
+npx wrangler secret put MCP_AUTH_TOKEN
+```
+
+**3. Deploy:**
+
+```bash
+npm run deploy
+```
+
+Your MCP server will be live at `https://internetbs-mcp.<your-subdomain>.workers.dev/mcp`
+
+**4. Connect from Claude Code:**
+
+```json
+{
+  "mcpServers": {
+    "internetbs": {
+      "url": "https://internetbs-mcp.<your-subdomain>.workers.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer your-mcp-auth-token"
+      }
+    }
+  }
+}
+```
+
+Health check: `GET https://internetbs-mcp.<your-subdomain>.workers.dev/health`
+
 ### Testing with Internet.bs Sandbox
 
 Internet.bs provides a free test environment:

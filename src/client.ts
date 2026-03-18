@@ -1,6 +1,3 @@
-import https from "node:https";
-import { URL, URLSearchParams } from "node:url";
-
 export interface ApiResponse {
   status?: string;
   transactid?: string;
@@ -13,7 +10,13 @@ export interface ClientConfig {
   apiUrl: string;
 }
 
-function getConfig(): ClientConfig {
+let _config: ClientConfig | null = null;
+
+export function setConfig(config: ClientConfig): void {
+  _config = config;
+}
+
+export function setConfigFromEnv(): void {
   const apiKey = process.env.INTERNETBS_API_KEY;
   const password = process.env.INTERNETBS_PASSWORD;
   const apiUrl =
@@ -25,44 +28,14 @@ function getConfig(): ClientConfig {
     );
   }
 
-  return { apiKey, password, apiUrl };
+  _config = { apiKey, password, apiUrl };
 }
 
-function httpsRequest(
-  url: string,
-  method: string,
-  body?: string
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const parsedUrl = new URL(url);
-    const options = {
-      hostname: parsedUrl.hostname,
-      port: 443,
-      path: parsedUrl.pathname + parsedUrl.search,
-      method,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-        ...(body ? { "Content-Length": Buffer.byteLength(body) } : {}),
-      },
-    };
-
-    const req = https.request(options, (res) => {
-      let data = "";
-      res.on("data", (chunk: Buffer) => {
-        data += chunk.toString();
-      });
-      res.on("end", () => resolve(data));
-    });
-
-    req.on("error", reject);
-    req.setTimeout(30000, () => {
-      req.destroy(new Error("Request timeout after 30s"));
-    });
-
-    if (body) req.write(body);
-    req.end();
-  });
+function getConfig(): ClientConfig {
+  if (!_config) {
+    throw new Error("Client not configured. Call setConfig() or setConfigFromEnv() first.");
+  }
+  return _config;
 }
 
 export async function apiCall(
@@ -92,13 +65,22 @@ export async function apiCall(
   const url = `${config.apiUrl}${resourcePath}`;
   const body = new URLSearchParams(allParams).toString();
 
-  const rawResponse = await httpsRequest(url, "POST", body);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body,
+    signal: AbortSignal.timeout(25000),
+  });
+
+  const rawResponse = await response.text();
 
   try {
     const parsed = JSON.parse(rawResponse) as ApiResponse;
     return parsed;
   } catch {
-    // Some responses may not be JSON, return as-is
     return { status: "UNKNOWN", raw_response: rawResponse };
   }
 }
