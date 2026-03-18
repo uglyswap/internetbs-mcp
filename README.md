@@ -2,57 +2,35 @@
 
 A complete [Model Context Protocol](https://modelcontextprotocol.io) server for the [Internet.bs](https://internet.bs) domain registrar API.
 
-**47 tools** covering the entire Internet.bs API surface:
+**47 tools** covering the entire Internet.bs API:
 
-- **Domain Management** — check availability, register, update, info, list, count, renew, restore, push, trade
-- **Domain Transfers** — initiate, retry, cancel, resend auth email, history, approve/reject outgoing
-- **DNS Records** — add, remove, update, list
-- **Nameserver Hosts** — create, info, update, delete, list
+- **Domains** — check, register, update, info, list, count, renew, restore, push, trade
+- **Transfers** — initiate, retry, cancel, resend auth, history, approve/reject
+- **DNS** — add, remove, update, list records
+- **Nameservers** — create, info, update, delete, list hosts
 - **URL Forwarding** — add, update, remove, list
 - **Email Forwarding** — add, update, remove, list
 - **Registrar Lock** — enable, disable, status
 - **Private WHOIS** — enable, disable, status
 - **Account** — balance, price list, configuration, total cost
-- **Registrant Verification** — info, resend
+- **Verification** — registrant email verification info & resend
 
-## Quick Start
+## Setup (2 minutes)
 
-### Prerequisites
+### 1. Get your Internet.bs API credentials
 
-- Node.js >= 18
-- Internet.bs API credentials ([request access](https://internet.bs))
+Log into [internet.bs](https://internet.bs) and request API access. You'll receive an **API key** and a **password**.
 
-### Installation
+### 2. Add to Claude Code
 
-```bash
-git clone https://github.com/uglyswap/internetbs-mcp.git
-cd internetbs-mcp
-npm install
-npm run build
-```
-
-### Configuration
-
-Set environment variables:
-
-```bash
-export INTERNETBS_API_KEY="your-api-key"
-export INTERNETBS_PASSWORD="your-password"
-export INTERNETBS_API_URL="https://api.internet.bs"  # or https://testapi.internet.bs for testing
-```
-
-Or copy `.env.example` to `.env` and fill in your credentials.
-
-### Usage with Claude Code
-
-Add to your Claude Code MCP settings (`~/.claude/settings.json`):
+Add this to your MCP settings file (`~/.claude/settings.json` on Mac/Linux, `%USERPROFILE%\.claude\settings.json` on Windows):
 
 ```json
 {
   "mcpServers": {
     "internetbs": {
-      "command": "node",
-      "args": ["/path/to/internetbs-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "internetbs-mcp"],
       "env": {
         "INTERNETBS_API_KEY": "your-api-key",
         "INTERNETBS_PASSWORD": "your-password",
@@ -63,72 +41,39 @@ Add to your Claude Code MCP settings (`~/.claude/settings.json`):
 }
 ```
 
-### Usage with Docker
+Replace `your-api-key` and `your-password` with your credentials. That's it.
 
-```bash
-docker build -t internetbs-mcp .
-docker run -i --rm \
-  -e INTERNETBS_API_KEY="your-key" \
-  -e INTERNETBS_PASSWORD="your-pass" \
-  -e INTERNETBS_API_URL="https://api.internet.bs" \
-  internetbs-mcp
-```
+### 3. Try it
 
-### Deploy on Cloudflare Workers (recommended, free)
+In Claude Code, ask:
 
-100K requests/day free. Zero infrastructure to manage.
+> "Check if example.com is available"
 
-**1. Install dependencies and login:**
+> "List all my domains"
 
-```bash
-npm install
-npx wrangler login
-```
+> "Add a DNS A record for www.mysite.com pointing to 1.2.3.4"
 
-**2. Set your secrets:**
+## Test Mode (no account needed)
 
-```bash
-npx wrangler secret put INTERNETBS_API_KEY
-npx wrangler secret put INTERNETBS_PASSWORD
-npx wrangler secret put MCP_AUTH_TOKEN
-```
-
-**3. Deploy:**
-
-```bash
-npm run deploy
-```
-
-Your MCP server will be live at `https://internetbs-mcp.<your-subdomain>.workers.dev/mcp`
-
-**4. Connect from Claude Code:**
+Internet.bs provides a free sandbox. Use these credentials to try before you buy:
 
 ```json
 {
   "mcpServers": {
     "internetbs": {
-      "url": "https://internetbs-mcp.<your-subdomain>.workers.dev/mcp",
-      "headers": {
-        "Authorization": "Bearer your-mcp-auth-token"
+      "command": "npx",
+      "args": ["-y", "internetbs-mcp"],
+      "env": {
+        "INTERNETBS_API_KEY": "testapi",
+        "INTERNETBS_PASSWORD": "testpass",
+        "INTERNETBS_API_URL": "https://testapi.internet.bs"
       }
     }
   }
 }
 ```
 
-Health check: `GET https://internetbs-mcp.<your-subdomain>.workers.dev/health`
-
-### Testing with Internet.bs Sandbox
-
-Internet.bs provides a free test environment:
-
-```bash
-export INTERNETBS_API_KEY="testapi"
-export INTERNETBS_PASSWORD="testpass"
-export INTERNETBS_API_URL="https://testapi.internet.bs"
-```
-
-## Available Tools
+## All 47 Tools
 
 ### Domain Operations (11)
 
@@ -227,9 +172,47 @@ export INTERNETBS_API_URL="https://testapi.internet.bs"
 | `registrant_verification_info` | Get registrant email verification status |
 | `registrant_verification_resend` | Resend registrant verification email |
 
+## Alternative: Docker
+
+```bash
+git clone https://github.com/uglyswap/internetbs-mcp.git
+cd internetbs-mcp
+docker build -t internetbs-mcp .
+```
+
+```json
+{
+  "mcpServers": {
+    "internetbs": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm",
+        "-e", "INTERNETBS_API_KEY=your-key",
+        "-e", "INTERNETBS_PASSWORD=your-pass",
+        "-e", "INTERNETBS_API_URL=https://api.internet.bs",
+        "internetbs-mcp"
+      ]
+    }
+  }
+}
+```
+
+## Alternative: Self-hosted (Cloudflare Workers)
+
+If you want to run a shared instance, a Cloudflare Workers deployment is included. See `wrangler.toml` and `src/worker.ts`. Free tier: 100K requests/day.
+
+```bash
+npx wrangler login
+npx wrangler secret put INTERNETBS_API_KEY
+npx wrangler secret put INTERNETBS_PASSWORD
+npx wrangler secret put MCP_AUTH_TOKEN
+npm run deploy
+```
+
 ## Development
 
 ```bash
+git clone https://github.com/uglyswap/internetbs-mcp.git
+cd internetbs-mcp
 npm install
 npm run dev      # Run with tsx (hot reload)
 npm run build    # Compile TypeScript
