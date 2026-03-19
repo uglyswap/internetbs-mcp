@@ -9,7 +9,13 @@ import {
 import { allTools } from "./tools/index.js";
 import { setConfigFromEnv } from "./client.js";
 
-setConfigFromEnv();
+// Lazy config: don't crash at startup if env vars are missing.
+// Config is checked only when a tool is actually called.
+try {
+  setConfigFromEnv();
+} catch {
+  // Will be configured when first tool call happens
+}
 
 const server = new Server(
   {
@@ -46,6 +52,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
+    // Ensure config is set before calling any tool
+    setConfigFromEnv();
     const result = await toolDef.handler((args ?? {}) as Record<string, unknown>);
     return {
       content: [
