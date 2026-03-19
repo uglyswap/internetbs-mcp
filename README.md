@@ -38,17 +38,34 @@ A complete [Model Context Protocol](https://modelcontextprotocol.io) server for 
 
 Internet.bs **requires you to whitelist an IP address** when creating an API key. Only requests coming from that IP will be accepted. This has important implications depending on how you run this MCP server:
 
+### How to find your IP address
+
+Run one of these commands in your terminal:
+
+```bash
+curl -s ifconfig.me        # Linux / Mac / WSL
+curl -s api.ipify.org      # Alternative (IPv4 only)
+```
+
+Or visit [whatismyip.com](https://whatismyip.com) in your browser.
+
+> **Important:** Use your **IPv4** address, not IPv6. If `ifconfig.me` returns an IPv6 (e.g. `2a02:...`), use `curl -s api.ipify.org` instead to get your IPv4.
+
 ### Local mode (npx) — recommended
 
-You run the server on your own machine. **Whitelist your residential/office IP** (the public IP of the machine running Claude Code).
+You run the server on your own machine. **Whitelist your residential/office IP** (the public IPv4 of the machine running Claude Code).
 
-To find your IP: visit [whatismyip.com](https://whatismyip.com)
-
-> If your ISP changes your IP, you'll need to update the whitelisted IP in your Internet.bs account, or create a new API key.
+> If your ISP changes your IP (common with residential connections), you'll need to update the whitelisted IP in your Internet.bs account, or create a new API key.
 
 ### Self-hosted remote mode (your own server)
 
 You run the server on a VPS/dedicated server. **Whitelist the server's fixed IP**.
+
+To find the server's outbound IP:
+
+```bash
+curl -s api.ipify.org    # Run this on the server
+```
 
 This works well with servers that have a **static IP** (OVH, Hetzner, Contabo, etc.). It does **NOT** work with serverless platforms like Cloudflare Workers, Vercel, or AWS Lambda, because they use shared/rotating IPs that can't be whitelisted.
 
