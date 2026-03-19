@@ -24,43 +24,18 @@ A complete [Model Context Protocol](https://modelcontextprotocol.io) server for 
 
 ---
 
-## Prerequisites
+## Setup (2 minutes)
 
-1. **An Internet.bs account** — Sign up at [internet.bs](https://internet.bs)
-2. **API credentials** — Once logged in, go to your account settings and request API access. You'll receive an **API Key** and a **Password**
-3. **An MCP-compatible client** (see [Compatibility](#compatibility))
+### 1. Get your Internet.bs API credentials
 
-> **No account yet?** You can try everything with the free sandbox credentials — see [Test Mode](#test-mode) below.
+1. Sign up at [internet.bs](https://internet.bs)
+2. Go to your account settings and request API access
+3. You'll receive an **API Key** and a **Password**
+4. Whitelist your IP address (the IP of the machine running the MCP server)
 
----
+### 2. Add to your MCP client
 
-## Option 1 — Remote (nothing to install)
-
-Add this to your MCP client configuration:
-
-```json
-{
-  "mcpServers": {
-    "internetbs": {
-      "url": "https://internetbs-mcp.uglyswap.workers.dev/mcp",
-      "headers": {
-        "X-InternetBS-Key": "your-api-key",
-        "X-InternetBS-Password": "your-password"
-      }
-    }
-  }
-}
-```
-
-Replace `your-api-key` and `your-password` with your Internet.bs credentials. That's it.
-
-**How it works:** The server runs on Cloudflare Workers. Your credentials are forwarded to Internet.bs over HTTPS on each request. Nothing is stored or logged on the server.
-
----
-
-## Option 2 — Local (via npx)
-
-Runs entirely on your machine:
+Add this to your MCP configuration:
 
 ```json
 {
@@ -78,36 +53,17 @@ Runs entirely on your machine:
 }
 ```
 
-Requires [Node.js](https://nodejs.org) >= 18 installed.
+Replace `your-api-key` and `your-password` with your credentials. That's it.
 
----
+> **Note:** Internet.bs requires IP whitelisting. Make sure the IP of the machine running this MCP server is authorized in your Internet.bs account.
 
-## Option 3 — Docker
+### 3. Try it
 
-```json
-{
-  "mcpServers": {
-    "internetbs": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "INTERNETBS_API_KEY=your-api-key",
-        "-e", "INTERNETBS_PASSWORD=your-password",
-        "-e", "INTERNETBS_API_URL=https://api.internet.bs",
-        "ghcr.io/uglyswap/internetbs-mcp"
-      ]
-    }
-  }
-}
-```
+Ask Claude:
 
-Or build locally:
-
-```bash
-git clone https://github.com/uglyswap/internetbs-mcp.git
-cd internetbs-mcp
-docker build -t internetbs-mcp .
-```
+- *"Is example.com available?"*
+- *"List all my domains"*
+- *"Add a DNS A record for www.mysite.com pointing to 1.2.3.4"*
 
 ---
 
@@ -115,35 +71,17 @@ docker build -t internetbs-mcp .
 
 | Client | Config file location |
 |--------|---------------------|
-| **Claude Code** | `~/.claude/settings.json` |
+| **Claude Code** | `~/.claude.json` → `projects.<path>.mcpServers` |
 | **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
 | **Cursor** | Settings > MCP Servers |
 | **Windsurf** | `~/.codeium/windsurf/mcp_config.json` |
-| **Any MCP client** | Check your client's documentation for MCP server configuration |
 
 ---
 
 ## Test Mode
 
-Internet.bs provides a free sandbox — no account needed:
+Internet.bs provides a free sandbox — no account needed, no IP whitelisting:
 
-**Remote:**
-```json
-{
-  "mcpServers": {
-    "internetbs": {
-      "url": "https://internetbs-mcp.uglyswap.workers.dev/mcp",
-      "headers": {
-        "X-InternetBS-Key": "testapi",
-        "X-InternetBS-Password": "testpass",
-        "X-InternetBS-URL": "https://testapi.internet.bs"
-      }
-    }
-  }
-}
-```
-
-**Local:**
 ```json
 {
   "mcpServers": {
@@ -160,13 +98,11 @@ Internet.bs provides a free sandbox — no account needed:
 }
 ```
 
-> Note: The sandbox has limited data. Some operations (like listing domains) will return test data only.
+> The sandbox has limited data. Some operations will return test data only.
 
 ---
 
 ## Usage Examples
-
-Once configured, just ask in natural language:
 
 | What you want to do | Example prompt |
 |---------------------|----------------|
@@ -186,16 +122,6 @@ Once configured, just ask in natural language:
 ---
 
 ## Configuration Reference
-
-### Remote mode (headers)
-
-| Header | Required | Description |
-|--------|----------|-------------|
-| `X-InternetBS-Key` | Yes | Your Internet.bs API key |
-| `X-InternetBS-Password` | Yes | Your Internet.bs API password |
-| `X-InternetBS-URL` | No | API base URL. Default: `https://api.internet.bs`. Use `https://testapi.internet.bs` for sandbox |
-
-### Local mode (environment variables)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -308,73 +234,44 @@ Once configured, just ask in natural language:
 
 ## Security
 
-- **Credentials are never stored** — In remote mode, your API key and password are passed via HTTPS headers on each request and forwarded directly to Internet.bs. The server does not log or persist them.
-- **HTTPS only** — All communication with Internet.bs uses HTTPS. The Cloudflare Worker endpoint is also HTTPS-only.
-- **No database** — The server is stateless. No user data, no sessions, no logs.
-- **Open source** — The full server code is in this repository. Audit it yourself.
-- **Self-host option** — If you don't want to use the shared instance, deploy your own (see below).
-
-> **Important:** Your Internet.bs API credentials can register and manage domains, which involves real money. Keep your API key and password secure. Never share them publicly.
+- **Runs locally** — Your credentials never leave your machine. All API calls go directly from your computer to Internet.bs over HTTPS.
+- **No external server** — No proxy, no middleman.
+- **IP whitelisting** — Internet.bs requires your IP to be whitelisted, adding an extra layer of security.
+- **Open source** — Full code in this repository. Audit it yourself.
 
 ---
 
 ## Compatibility
 
-This server implements the [Model Context Protocol](https://modelcontextprotocol.io) and works with any MCP-compatible client:
+Works with any MCP-compatible client:
 
-| Client | Remote (URL) | Local (npx) | Status |
-|--------|:---:|:---:|--------|
-| Claude Code | Yes | Yes | Fully supported |
-| Claude Desktop | Yes | Yes | Fully supported |
-| Cursor | Yes | Yes | Fully supported |
-| Windsurf | Yes | Yes | Fully supported |
-| Zed | — | Yes | Local mode only |
-| Any MCP client | Yes | Yes | Standard MCP protocol |
-
----
-
-## Self-Hosting
-
-Deploy your own instance on Cloudflare Workers (free tier: 100K requests/day):
-
-```bash
-git clone https://github.com/uglyswap/internetbs-mcp.git
-cd internetbs-mcp
-npm install
-npx wrangler login
-npm run deploy
-```
-
-Your instance: `https://internetbs-mcp.<your-subdomain>.workers.dev/mcp`
-
-Users connect the same way as Option 1, just with your URL.
-
-**Optional:** Lock down access with a server-level token:
-
-```bash
-npx wrangler secret put MCP_AUTH_TOKEN
-```
-
-Users must then include `"Authorization": "Bearer <token>"` in their headers.
+| Client | Supported |
+|--------|:---------:|
+| Claude Code | Yes |
+| Claude Desktop | Yes |
+| Cursor | Yes |
+| Windsurf | Yes |
+| Zed | Yes |
+| Any MCP client | Yes |
 
 ---
 
 ## Troubleshooting
 
 ### "Missing credentials" error
-Make sure your headers (remote) or env vars (local) are set correctly. The API key and password are both required.
+Make sure `INTERNETBS_API_KEY` and `INTERNETBS_PASSWORD` are set in your MCP config `env` block.
 
 ### "FAILURE" status in API responses
-This usually means invalid credentials or the domain/operation isn't supported. Check your Internet.bs account status and API access.
+Usually means invalid credentials, IP not whitelisted, or the operation isn't supported. Check your Internet.bs account.
 
 ### npx is slow on first run
-`npx` downloads the package on first use (~20KB). Subsequent runs use the cache and start instantly.
+`npx` downloads the package on first use (~25KB). Subsequent runs use the cache and start instantly.
 
-### Connection timeout
-The Internet.bs API can occasionally be slow. The default timeout is 25 seconds. If you experience timeouts, try again.
+### IP not authorized
+Internet.bs requires IP whitelisting. Go to your Internet.bs account settings and add your machine's public IP.
 
 ### "Unknown tool" error
-Make sure you're using the latest version. Run `npx internetbs-mcp@latest` to force an update.
+Run `npx internetbs-mcp@latest` to force update to the latest version.
 
 ---
 
@@ -384,18 +281,16 @@ Make sure you're using the latest version. Run `npx internetbs-mcp@latest` to fo
 git clone https://github.com/uglyswap/internetbs-mcp.git
 cd internetbs-mcp
 npm install
-npm run dev          # Local stdio server (hot reload)
-npm run dev:worker   # Local Cloudflare Worker (http://localhost:8787)
-npm run build        # Compile TypeScript
-npm start            # Run compiled stdio version
+npm run dev      # Local stdio server (hot reload)
+npm run build    # Compile TypeScript
+npm start        # Run compiled version
 ```
 
 ### Project structure
 
 ```
 src/
-  index.ts           # stdio entry point (local mode)
-  worker.ts          # Cloudflare Worker entry point (remote mode)
+  index.ts           # MCP server entry point (stdio transport)
   client.ts          # Internet.bs API HTTP client
   types.ts           # TypeScript type definitions
   tools/
@@ -415,14 +310,12 @@ src/
 
 ## Contributing
 
-Contributions are welcome! Please:
-
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Commit your changes
 4. Push and open a Pull Request
 
-For bugs, please [open an issue](https://github.com/uglyswap/internetbs-mcp/issues).
+For bugs, [open an issue](https://github.com/uglyswap/internetbs-mcp/issues).
 
 ---
 
@@ -431,7 +324,6 @@ For bugs, please [open an issue](https://github.com/uglyswap/internetbs-mcp/issu
 - [Internet.bs](https://internet.bs) — Domain registrar
 - [Internet.bs API Documentation](https://internet.bs/api/) — Official API docs
 - [Model Context Protocol](https://modelcontextprotocol.io) — MCP specification
-- [MCP Server Registry](https://github.com/modelcontextprotocol/servers) — Other MCP servers
 
 ## License
 
