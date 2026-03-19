@@ -27,40 +27,43 @@ A complete [Model Context Protocol](https://modelcontextprotocol.io) server for 
 ## Prerequisites
 
 1. **An Internet.bs account** — Sign up at [internet.bs](https://internet.bs)
-2. **API credentials** — Once logged in, go to your account settings and request API access. You'll receive an **API Key** and a **Password**
+2. **API credentials** — Go to your account settings and request API access. You'll receive an **API Key** and a **Password**
 3. **An MCP-compatible client** (see [Compatibility](#compatibility))
 
-> **No account yet?** You can try everything with the free sandbox credentials — see [Test Mode](#test-mode) below.
+> **No account yet?** You can try everything with the free sandbox — see [Test Mode](#test-mode) below.
 
 ---
 
-## Option 1 — Remote (nothing to install)
+## Important: IP Whitelisting
 
-Add this to your MCP client configuration:
+Internet.bs **requires you to whitelist an IP address** when creating an API key. Only requests coming from that IP will be accepted. This has important implications depending on how you run this MCP server:
 
-```json
-{
-  "mcpServers": {
-    "internetbs": {
-      "url": "https://internetbs-mcp.uglyswap.workers.dev/mcp",
-      "headers": {
-        "X-InternetBS-Key": "your-api-key",
-        "X-InternetBS-Password": "your-password"
-      }
-    }
-  }
-}
-```
+### Local mode (npx) — recommended
 
-Replace `your-api-key` and `your-password` with your Internet.bs credentials. That's it.
+You run the server on your own machine. **Whitelist your residential/office IP** (the public IP of the machine running Claude Code).
 
-**How it works:** The server runs on Cloudflare Workers. Your credentials are forwarded to Internet.bs over HTTPS on each request. Nothing is stored or logged on the server.
+To find your IP: visit [whatismyip.com](https://whatismyip.com)
+
+> If your ISP changes your IP, you'll need to update the whitelisted IP in your Internet.bs account, or create a new API key.
+
+### Self-hosted remote mode (your own server)
+
+You run the server on a VPS/dedicated server. **Whitelist the server's fixed IP**.
+
+This works well with servers that have a **static IP** (OVH, Hetzner, Contabo, etc.). It does **NOT** work with serverless platforms like Cloudflare Workers, Vercel, or AWS Lambda, because they use shared/rotating IPs that can't be whitelisted.
+
+### Multiple environments
+
+If you need to use the API from multiple IPs (e.g., your PC + a server), you have two options:
+
+1. **Create multiple API keys** — one per IP, each whitelisted for its own IP
+2. **Update the whitelisted IP** — in your Internet.bs account when you switch environments
 
 ---
 
-## Option 2 — Local (via npx)
+## Option 1 — Local (via npx) — Recommended
 
-Runs entirely on your machine:
+Runs entirely on your machine. Nothing to install besides Node.js.
 
 ```json
 {
@@ -78,7 +81,31 @@ Runs entirely on your machine:
 }
 ```
 
-Requires [Node.js](https://nodejs.org) >= 18 installed.
+Replace `your-api-key` and `your-password` with your credentials. Requires [Node.js](https://nodejs.org) >= 18.
+
+---
+
+## Option 2 — Self-hosted remote (your own server)
+
+Deploy on any server with a **fixed IP address**. Users connect via URL and pass their own credentials in headers. The server is a stateless proxy — it never stores credentials.
+
+```json
+{
+  "mcpServers": {
+    "internetbs": {
+      "url": "https://your-server.com/mcp",
+      "headers": {
+        "X-InternetBS-Key": "your-api-key",
+        "X-InternetBS-Password": "your-password"
+      }
+    }
+  }
+}
+```
+
+See [Self-Hosting](#self-hosting) for deployment instructions.
+
+> **Warning:** Serverless platforms (Cloudflare Workers free tier, Vercel, AWS Lambda) do NOT have fixed IPs. They are incompatible with Internet.bs IP whitelisting. Use a VPS with a static IP instead.
 
 ---
 
@@ -94,14 +121,14 @@ Requires [Node.js](https://nodejs.org) >= 18 installed.
         "-e", "INTERNETBS_API_KEY=your-api-key",
         "-e", "INTERNETBS_PASSWORD=your-password",
         "-e", "INTERNETBS_API_URL=https://api.internet.bs",
-        "ghcr.io/uglyswap/internetbs-mcp"
+        "internetbs-mcp"
       ]
     }
   }
 }
 ```
 
-Or build locally:
+Build the image:
 
 ```bash
 git clone https://github.com/uglyswap/internetbs-mcp.git
@@ -115,35 +142,17 @@ docker build -t internetbs-mcp .
 
 | Client | Config file location |
 |--------|---------------------|
-| **Claude Code** | `~/.claude/settings.json` |
+| **Claude Code** | `~/.claude.json` → `projects.<path>.mcpServers` |
 | **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
 | **Cursor** | Settings > MCP Servers |
 | **Windsurf** | `~/.codeium/windsurf/mcp_config.json` |
-| **Any MCP client** | Check your client's documentation for MCP server configuration |
 
 ---
 
 ## Test Mode
 
-Internet.bs provides a free sandbox — no account needed:
+Internet.bs provides a free sandbox — no account needed, no IP whitelisting:
 
-**Remote:**
-```json
-{
-  "mcpServers": {
-    "internetbs": {
-      "url": "https://internetbs-mcp.uglyswap.workers.dev/mcp",
-      "headers": {
-        "X-InternetBS-Key": "testapi",
-        "X-InternetBS-Password": "testpass",
-        "X-InternetBS-URL": "https://testapi.internet.bs"
-      }
-    }
-  }
-}
-```
-
-**Local:**
 ```json
 {
   "mcpServers": {
@@ -160,7 +169,7 @@ Internet.bs provides a free sandbox — no account needed:
 }
 ```
 
-> Note: The sandbox has limited data. Some operations (like listing domains) will return test data only.
+> The sandbox has limited data. Some operations will return test data only.
 
 ---
 
@@ -187,14 +196,6 @@ Once configured, just ask in natural language:
 
 ## Configuration Reference
 
-### Remote mode (headers)
-
-| Header | Required | Description |
-|--------|----------|-------------|
-| `X-InternetBS-Key` | Yes | Your Internet.bs API key |
-| `X-InternetBS-Password` | Yes | Your Internet.bs API password |
-| `X-InternetBS-URL` | No | API base URL. Default: `https://api.internet.bs`. Use `https://testapi.internet.bs` for sandbox |
-
 ### Local mode (environment variables)
 
 | Variable | Required | Description |
@@ -202,6 +203,14 @@ Once configured, just ask in natural language:
 | `INTERNETBS_API_KEY` | Yes | Your Internet.bs API key |
 | `INTERNETBS_PASSWORD` | Yes | Your Internet.bs API password |
 | `INTERNETBS_API_URL` | No | API base URL. Default: `https://testapi.internet.bs`. Set to `https://api.internet.bs` for production |
+
+### Remote mode (headers)
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-InternetBS-Key` | Yes | Your Internet.bs API key |
+| `X-InternetBS-Password` | Yes | Your Internet.bs API password |
+| `X-InternetBS-URL` | No | API base URL. Default: `https://api.internet.bs`. Use `https://testapi.internet.bs` for sandbox |
 
 ---
 
@@ -308,11 +317,11 @@ Once configured, just ask in natural language:
 
 ## Security
 
-- **Credentials are never stored** — In remote mode, your API key and password are passed via HTTPS headers on each request and forwarded directly to Internet.bs. The server does not log or persist them.
-- **HTTPS only** — All communication with Internet.bs uses HTTPS. The Cloudflare Worker endpoint is also HTTPS-only.
+- **Local mode** — Credentials never leave your machine. API calls go directly from your computer to Internet.bs over HTTPS.
+- **Remote mode** — Credentials are passed via HTTPS headers on each request and forwarded to Internet.bs. The server does not log or persist them.
+- **IP whitelisting** — Internet.bs requires your IP to be whitelisted, adding an extra layer of security.
 - **No database** — The server is stateless. No user data, no sessions, no logs.
-- **Open source** — The full server code is in this repository. Audit it yourself.
-- **Self-host option** — If you don't want to use the shared instance, deploy your own (see below).
+- **Open source** — Full code in this repository. Audit it yourself.
 
 > **Important:** Your Internet.bs API credentials can register and manage domains, which involves real money. Keep your API key and password secure. Never share them publicly.
 
@@ -320,42 +329,60 @@ Once configured, just ask in natural language:
 
 ## Compatibility
 
-This server implements the [Model Context Protocol](https://modelcontextprotocol.io) and works with any MCP-compatible client:
-
-| Client | Remote (URL) | Local (npx) | Status |
-|--------|:---:|:---:|--------|
-| Claude Code | Yes | Yes | Fully supported |
-| Claude Desktop | Yes | Yes | Fully supported |
-| Cursor | Yes | Yes | Fully supported |
-| Windsurf | Yes | Yes | Fully supported |
-| Zed | — | Yes | Local mode only |
-| Any MCP client | Yes | Yes | Standard MCP protocol |
+| Client | Local (npx) | Remote (URL) | Docker |
+|--------|:-----------:|:------------:|:------:|
+| Claude Code | Yes | Yes | Yes |
+| Claude Desktop | Yes | Yes | Yes |
+| Cursor | Yes | Yes | Yes |
+| Windsurf | Yes | Yes | Yes |
+| Zed | Yes | — | Yes |
+| Any MCP client | Yes | Yes | Yes |
 
 ---
 
 ## Self-Hosting
 
-Deploy your own instance on Cloudflare Workers (free tier: 100K requests/day):
+Deploy on any server with a **static IP** (VPS, dedicated server, etc.).
+
+### With Docker
+
+```bash
+git clone https://github.com/uglyswap/internetbs-mcp.git
+cd internetbs-mcp
+docker build -t internetbs-mcp .
+docker run -d --name internetbs-mcp -p 3000:3000 internetbs-mcp
+```
+
+### With Node.js
 
 ```bash
 git clone https://github.com/uglyswap/internetbs-mcp.git
 cd internetbs-mcp
 npm install
+npm run build
+npm start
+```
+
+### As a Cloudflare Worker (advanced)
+
+The repo includes a `wrangler.toml` and `src/worker.ts` for Cloudflare Workers deployment. However, **Cloudflare Workers free tier uses shared/rotating IPs** which are incompatible with Internet.bs IP whitelisting. This only works if:
+
+- You have Cloudflare Enterprise with dedicated egress IPs, or
+- You use the worker as a proxy behind a fixed-IP server
+
+```bash
 npx wrangler login
 npm run deploy
 ```
 
-Your instance: `https://internetbs-mcp.<your-subdomain>.workers.dev/mcp`
+### Whitelisting your server's IP
 
-Users connect the same way as Option 1, just with your URL.
+1. Log into your Internet.bs account
+2. Go to API settings
+3. Create an API key whitelisted for your **server's public IP**
+4. Use that API key in your deployment
 
-**Optional:** Lock down access with a server-level token:
-
-```bash
-npx wrangler secret put MCP_AUTH_TOKEN
-```
-
-Users must then include `"Authorization": "Bearer <token>"` in their headers.
+> If your server has multiple outbound IPs, whitelist the one used for HTTPS requests. Run `curl ifconfig.me` on the server to check.
 
 ---
 
@@ -365,16 +392,19 @@ Users must then include `"Authorization": "Bearer <token>"` in their headers.
 Make sure your headers (remote) or env vars (local) are set correctly. The API key and password are both required.
 
 ### "FAILURE" status in API responses
-This usually means invalid credentials or the domain/operation isn't supported. Check your Internet.bs account status and API access.
+Usually means invalid credentials, IP not whitelisted, or the operation isn't supported. Check your Internet.bs account.
+
+### IP not authorized
+Internet.bs requires IP whitelisting. Go to your account settings and add your machine's public IP. Run `curl ifconfig.me` to check your IP.
 
 ### npx is slow on first run
-`npx` downloads the package on first use (~20KB). Subsequent runs use the cache and start instantly.
+`npx` downloads the package on first use (~25KB). Subsequent runs use the cache.
 
 ### Connection timeout
 The Internet.bs API can occasionally be slow. The default timeout is 25 seconds. If you experience timeouts, try again.
 
 ### "Unknown tool" error
-Make sure you're using the latest version. Run `npx internetbs-mcp@latest` to force an update.
+Run `npx internetbs-mcp@latest` to force update to the latest version.
 
 ---
 
@@ -395,7 +425,7 @@ npm start            # Run compiled stdio version
 ```
 src/
   index.ts           # stdio entry point (local mode)
-  worker.ts          # Cloudflare Worker entry point (remote mode)
+  worker.ts          # HTTP entry point (remote/self-hosted mode)
   client.ts          # Internet.bs API HTTP client
   types.ts           # TypeScript type definitions
   tools/
@@ -415,14 +445,12 @@ src/
 
 ## Contributing
 
-Contributions are welcome! Please:
-
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Commit your changes
 4. Push and open a Pull Request
 
-For bugs, please [open an issue](https://github.com/uglyswap/internetbs-mcp/issues).
+For bugs, [open an issue](https://github.com/uglyswap/internetbs-mcp/issues).
 
 ---
 
@@ -431,7 +459,6 @@ For bugs, please [open an issue](https://github.com/uglyswap/internetbs-mcp/issu
 - [Internet.bs](https://internet.bs) — Domain registrar
 - [Internet.bs API Documentation](https://internet.bs/api/) — Official API docs
 - [Model Context Protocol](https://modelcontextprotocol.io) — MCP specification
-- [MCP Server Registry](https://github.com/modelcontextprotocol/servers) — Other MCP servers
 
 ## License
 

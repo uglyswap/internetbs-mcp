@@ -1,6 +1,6 @@
 {
   "name": "internetbs-mcp",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Complete MCP Server for Internet.bs Domain Registrar API",
   "type": "module",
   "main": "dist/index.js",
